@@ -12,7 +12,9 @@
       "PowerShell(git remote *)",
       "PowerShell(git branch *)",
       "PowerShell(git push *)",
-      "PowerShell(gh auth *)"
+      "PowerShell(gh auth *)",
+      "PowerShell(curl *)",
+      "PowerShell(Invoke-RestMethod -Uri \"https://deadline-reminder.vercel.app/api/items\" -Method Get | ConvertTo-Json -Depth 5)"
     ]
   }
 }
