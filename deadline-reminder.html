@@ -462,7 +462,7 @@ tbody tr:hover { background: #fafbfe; }
   <div class="card">
     <h2>微信推送</h2>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-      <span style="font-size:13px;color:#8899aa;">使用 WxPusher 发送微信提醒，每天自动检测即将到期的任务</span>
+      <span style="font-size:13px;color:#8899aa;">使用 Server酱 发送微信提醒，每天自动检测即将到期的任务</span>
       <button class="btn btn-success btn-sm" id="btnTestNotify" onclick="sendTestNotification()">发送测试通知</button>
     </div>
     <div id="notifyStatus" style="font-size:12px;color:#8899aa;margin-top:10px;"></div>
@@ -844,10 +844,9 @@ function clearApiKey() {
   closeApiKeyModal();
 }
 
-// --- WxPusher ---
-const WXPUSHER_APP_TOKEN = 'AT_ufHvbMdHLC2cAsiN5Ery9Mnu93JLZmE0';
-const WXPUSHER_UID = 'UID_klaGQ4CXbOO6TTZUJOdN7Bjjhp3Z';
-const NOTIFY_LOG_KEY = 'wxpusher_notify_log';
+// --- Server酱 ---
+const SENDKEY = 'SCT354575TbA9Vr0VH7kBSo7q0iAiuJTRP';
+const NOTIFY_LOG_KEY = 'serverchan_notify_log';
 
 function getNotifyLog() {
   try {
@@ -860,27 +859,27 @@ function saveNotifyLog(log) {
   localStorage.setItem(NOTIFY_LOG_KEY, JSON.stringify(log));
 }
 
-async function sendWxMessage(content) {
-  const body = {
-    appToken: WXPUSHER_APP_TOKEN,
-    content: content,
-    uids: [WXPUSHER_UID]
-  };
-  console.log('[WxPusher] 请求地址:', 'https://wxpusher.zjiecode.com/api/send/message');
-  console.log('[WxPusher] 请求体:', JSON.stringify(body, null, 2));
+async function sendWxMessage(title, desp) {
+  const url = 'https://sctapi.ftqq.com/' + SENDKEY + '.send';
+  const body = new URLSearchParams();
+  body.append('title', title);
+  body.append('desp', desp);
 
-  const resp = await fetch('https://wxpusher.zjiecode.com/api/send/message', {
+  console.log('[Server酱] 请求地址:', url);
+  console.log('[Server酱] 请求体:', body.toString());
+
+  const resp = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString()
   });
 
   const respText = await resp.text();
-  console.log('[WxPusher] 响应状态:', resp.status);
-  console.log('[WxPusher] 响应内容:', respText);
+  console.log('[Server酱] 响应状态:', resp.status);
+  console.log('[Server酱] 响应内容:', respText);
 
   if (!resp.ok) {
-    throw new Error('WxPusher 请求失败: ' + resp.status + ' ' + respText);
+    throw new Error('Server酱请求失败: ' + resp.status + ' ' + respText);
   }
   return JSON.parse(respText);
 }
@@ -891,7 +890,7 @@ async function sendTestNotification() {
   btn.disabled = true;
   statusEl.textContent = '发送中...';
   try {
-    await sendWxMessage('✅ 测试消息：Deadline 提醒工具微信推送已就绪！');
+    await sendWxMessage('✅ 测试消息', 'Deadline 提醒工具微信推送已就绪！');
     statusEl.textContent = '测试通知已发送，请检查微信';
     showToast('测试通知已发送');
   } catch (e) {
@@ -908,7 +907,6 @@ function checkAndNotify() {
   const todayStr = today.toISOString().slice(0, 10);
 
   const log = getNotifyLog();
-  // Only notify once per day
   if (log.lastDate === todayStr) {
     document.getElementById('notifyStatus').textContent = '今日已推送过提醒（' + todayStr + '）';
     return;
@@ -927,15 +925,15 @@ function checkAndNotify() {
     return;
   }
 
-  // Build message
+  const title = '⚠️ DDL提醒：' + notifyItems.length + '个任务即将截止';
   const lines = notifyItems.map(i => {
     const days = getDaysUntil(i.deadline);
     const addr = i.address ? '，地址：' + i.address : '';
-    return '⚠️ DDL提醒：【' + i.name + '】还有' + days + '天截止' + addr;
+    return '【' + i.name + '】还有' + days + '天截止' + addr;
   });
-  const content = lines.join('\n');
+  const desp = lines.join('\n\n');
 
-  sendWxMessage(content).then(() => {
+  sendWxMessage(title, desp).then(() => {
     log.lastDate = todayStr;
     saveNotifyLog(log);
     document.getElementById('notifyStatus').textContent = '已推送 ' + notifyItems.length + ' 条提醒（' + todayStr + '）';
