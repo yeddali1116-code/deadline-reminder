@@ -42,7 +42,10 @@ export default async function handler(req, res) {
         body: JSON.stringify({ parent: { database_id: DB_ID }, properties: props })
       });
       const page = await resp.json();
-      if (!resp.ok) throw new Error(JSON.stringify(page));
+      if (!resp.ok) {
+        console.error('[Notion] POST pages 失败, 状态码:', resp.status, JSON.stringify(page));
+        throw new Error('Notion API error (HTTP ' + resp.status + ')');
+      }
       return res.json(parsePage(page));
     }
 
@@ -67,7 +70,10 @@ export default async function handler(req, res) {
         body: JSON.stringify({ properties: props })
       });
       const page = await resp.json();
-      if (!resp.ok) throw new Error(JSON.stringify(page));
+      if (!resp.ok) {
+        console.error('[Notion] PATCH page 失败, 状态码:', resp.status, JSON.stringify(page));
+        throw new Error('Notion API error (HTTP ' + resp.status + ')');
+      }
       return res.json(parsePage(page));
     }
 
@@ -79,7 +85,8 @@ export default async function handler(req, res) {
       });
       if (!resp.ok) {
         const err = await resp.json();
-        throw new Error(JSON.stringify(err));
+        console.error('[Notion] DELETE (archive) 失败, 状态码:', resp.status, JSON.stringify(err));
+        throw new Error('Notion API error (HTTP ' + resp.status + ')');
       }
       return res.json({ success: true });
     }
@@ -100,7 +107,10 @@ async function queryAll(dbId, headers) {
       body: JSON.stringify(cursor ? { start_cursor: cursor, page_size: 100 } : { page_size: 100 })
     });
     const data = await resp.json();
-    if (!resp.ok) throw new Error(JSON.stringify(data));
+    if (!resp.ok) {
+      console.error('[Notion] query 失败, 状态码:', resp.status, JSON.stringify(data));
+      throw new Error('Notion API error (HTTP ' + resp.status + ')');
+    }
     results = results.concat(data.results);
     cursor = data.next_cursor;
   } while (cursor);

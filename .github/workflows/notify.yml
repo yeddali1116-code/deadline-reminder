@@ -6,6 +6,9 @@ on:
     - cron: '0 1 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   notify:
     runs-on: ubuntu-latest
@@ -14,6 +17,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Debug secrets
+        run: |
+          echo "NOTION_API_KEY 是否设置: ${{ secrets.NOTION_API_KEY != '' }}"
+          echo "NOTION_DATABASE_ID 是否设置: ${{ secrets.NOTION_DATABASE_ID != '' }}"
+          echo "SENDKEY 是否设置: ${{ secrets.SENDKEY != '' }}"
       - name: Run notify script
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}

@@ -9,6 +9,10 @@ async function main() {
   console.log('[DDL Notify] 开始检测...');
   console.log('[DDL Notify] 时间:', new Date().toISOString());
 
+  if (!NOTION_KEY) throw new Error('缺少环境变量 NOTION_API_KEY');
+  if (!DB_ID) throw new Error('缺少环境变量 NOTION_DATABASE_ID');
+  if (!SENDKEY) throw new Error('缺少环境变量 SENDKEY');
+
   // 1. 查询 Notion 数据库中所有未完成的事项
   const items = await queryNotion(DB_ID, NOTION_KEY);
   console.log('[DDL Notify] 从 Notion 读取到', items.length, '条未完成事项');
@@ -65,17 +69,31 @@ async function queryNotion(dbId, apiKey) {
   let results = [];
   let cursor;
   do {
+    const body = {
+      filter: { property: '已完成', checkbox: { equals: false } },
+      page_size: 100,
+      ...(cursor ? { start_cursor: cursor } : {})
+    };
     const resp = await fetch('https://api.notion.com/v1/databases/' + dbId + '/query', {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        filter: { property: '已完成', checkbox: { equals: false } },
-        page_size: 100,
-        ...(cursor ? { start_cursor: cursor } : {})
-      })
+      body: JSON.stringify(body)
     });
     const data = await resp.json();
-    if (!resp.ok) throw new Error('Notion query failed: ' + JSON.stringify(data));
+    if (!resp.ok) {
+      console.error('[Notion] 请求失败, URL:', 'https://api.notion.com/v1/databases/' + dbId + '/query');
+      console.error('[Notion] 状态码:', resp.status);
+      console.error('[Notion] 响应:', JSON.stringify(data));
+      if (resp.status === 403) {
+        throw new Error(
+          'Notion API 返回 403 Forbidden。请检查:\n' +
+          '  1. NOTION_API_KEY 是否正确且未过期\n' +
+          '  2. 在 Notion 页面中是否已将集成添加到数据库的 Connections 中\n' +
+          '     (打开数据库 → 右上角 ... → Connections → 添加你的集成)'
+        );
+      }
+      throw new Error('Notion query failed (HTTP ' + resp.status + '): ' + JSON.stringify(data));
+    }
     results = results.concat(data.results);
     cursor = data.next_cursor;
   } while (cursor);
